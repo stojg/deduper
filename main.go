@@ -1,3 +1,15 @@
+/**
+This is a pretty simple photo/large file deduplication program. It compares files by first filesize and does a secondary sweep
+by comparing the SHA1 sum of the files. By default it will not do any actions unless the -dryrun flag is set to true.
+At that point it will move the duplicates into a _Rejected subfolder next to the original file (same pattern as for the
+https://www.fastrawviewer.com/ program. That folder can be cleaned either manually or by using find.
+
+find . -type f -path '*_Rejected/*' -print -delete
+find . -type d -name '_Rejected' -empty -delete
+
+The original is found by just grabbing the shortest path among all duplicates. Since I am organising photos in
+yyyy-mm-dd format with `exiftool` it doesnt that much which original I keep.
+*/
 package main
 
 import (
@@ -11,11 +23,35 @@ import (
 	"strings"
 )
 
+// Where duplicates will be moved
+const rejectFolder = "_Rejected"
+
+// These are the only file suffixes that this program will check
+var validExt = []string{
+	".jpg",
+	".jpeg",
+	".mov",
+	".nef",
+	".raf",
+	".mp4",
+	".png",
+	".tiff",
+	".heic",
+	".dng",
+	".raf",
+	".tiff",
+	".png",
+	".mp4",
+	".mkv",
+	".tgz",
+	".zip",
+	".rar",
+}
+
 type Hash [20]byte
 
 func main() {
 	var dryRun = true
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: %s path\n\n", os.Args[0])
 		flag.PrintDefaults()
@@ -27,29 +63,6 @@ func main() {
 	if path == "" {
 		flag.Usage()
 		os.Exit(1)
-	}
-
-	const rejectFolder = "_Rejected"
-
-	validExt := []string{
-		".jpg",
-		".jpeg",
-		".mov",
-		".nef",
-		".raf",
-		".mp4",
-		".png",
-		".tiff",
-		".heic",
-		".dng",
-		".raf",
-		".tiff",
-		".png",
-		".mp4",
-		".mkv",
-		".tgz",
-		".zip",
-		".rar",
 	}
 
 	fmt.Printf("Scanning directory and comparing file sizes\n")
